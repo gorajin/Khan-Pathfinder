@@ -1,23 +1,199 @@
 {
-  "7.EE.B.4a": {
-    "id": "7.EE.B.4a",
-    "grade": 7,
-    "description": "Solve word problems leading to equations of the form px + q = r",
-    "prerequisites": {
-      "CONCEPTUAL": "6.EE.B.7",
-      "ARITHMETIC": "7.NS.A.1"
+  "strands": {
+    "NUMBER_SYSTEM": {
+      "name": "The Number System (NS)",
+      "description": "From dividing fractions to irrational numbers.",
+      "standards": [
+        "8.NS.A.1",
+        "7.NS.A.1",
+        "6.NS.C.6",
+        "6.NS.A.1"
+      ]
+    },
+    "ALGEBRA_FUNCTIONS": {
+      "name": "Algebra & Functions (EE/F)",
+      "description": "From variables to linear functions.",
+      "standards": [
+        "8.F.B.4",
+        "8.EE.C.7",
+        "7.EE.B.4a",
+        "6.EE.B.7",
+        "6.EE.A.2"
+      ]
+    },
+    "RATIOS_PROPORTIONS": {
+      "name": "Ratios & Proportionality (RP)",
+      "description": "From unit rates to slope.",
+      "standards": [
+        "8.EE.B.5",
+        "7.RP.A.2",
+        "7.RP.A.3",
+        "6.RP.A.3"
+      ]
+    },
+    "GEOMETRY": {
+      "name": "Geometry (G)",
+      "description": "From area/volume to Pythagorean Theorem.",
+      "standards": [
+        "8.G.B.7",
+        "7.G.B.6",
+        "6.G.A.1"
+      ]
+    },
+    "STATISTICS": {
+      "name": "Statistics & Probability (SP)",
+      "description": "From mean/median to scatter plots.",
+      "standards": [
+        "8.SP.A.1",
+        "7.SP.A.1",
+        "6.SP.B.5"
+      ]
     }
   },
-  "6.EE.B.7": {
-    "id": "6.EE.B.7",
-    "grade": 6,
-    "description": "Solve real-world problems by writing equations of the form x + p = q",
-    "prerequisites": {} 
-  },
-  "7.NS.A.1": {
-    "id": "7.NS.A.1",
-    "grade": 7,
-    "description": "Apply properties of operations to add and subtract rational numbers",
-    "prerequisites": {}
+  "nodes": {
+    "8.NS.A.1": {
+      "id": "8.NS.A.1",
+      "grade": 8,
+      "description": "Know that numbers that are not rational are called irrational.",
+      "prerequisites": {
+        "CONCEPTUAL": "7.NS.A.2"
+      }
+    },
+    "7.NS.A.1": {
+      "id": "7.NS.A.1",
+      "grade": 7,
+      "description": "Apply properties of operations to add and subtract rational numbers (Integers).",
+      "prerequisites": {
+        "CONCEPTUAL": "6.NS.C.6"
+      }
+    },
+    "6.NS.C.6": {
+      "id": "6.NS.C.6",
+      "grade": 6,
+      "description": "Understand a rational number as a point on the number line.",
+      "prerequisites": {}
+    },
+    "6.NS.A.1": {
+      "id": "6.NS.A.1",
+      "grade": 6,
+      "description": "Interpret and compute quotients of fractions.",
+      "prerequisites": {}
+    },
+    "8.F.B.4": {
+      "id": "8.F.B.4",
+      "grade": 8,
+      "description": "Construct a function to model a linear relationship (y=mx+b).",
+      "prerequisites": {
+        "CONCEPTUAL": "8.EE.B.5",
+        "ALGEBRAIC": "7.EE.B.4a"
+      }
+    },
+    "8.EE.C.7": {
+      "id": "8.EE.C.7",
+      "grade": 8,
+      "description": "Solve linear equations in one variable (infinite/no solutions).",
+      "prerequisites": {
+        "SKILL": "7.EE.B.4a"
+      }
+    },
+    "7.EE.B.4a": {
+      "id": "7.EE.B.4a",
+      "grade": 7,
+      "description": "Solve word problems leading to equations of the form px + q = r.",
+      "prerequisites": {
+        "CONCEPTUAL": "6.EE.B.7",
+        "ARITHMETIC": "7.NS.A.1"
+      }
+    },
+    "6.EE.B.7": {
+      "id": "6.EE.B.7",
+      "grade": 6,
+      "description": "Solve real-world problems by writing equations of the form x + p = q.",
+      "prerequisites": {
+        "CONCEPTUAL": "6.EE.A.2"
+      }
+    },
+    "6.EE.A.2": {
+      "id": "6.EE.A.2",
+      "grade": 6,
+      "description": "Write, read, and evaluate expressions in which letters stand for numbers.",
+      "prerequisites": {}
+    },
+    "8.EE.B.5": {
+      "id": "8.EE.B.5",
+      "grade": 8,
+      "description": "Graph proportional relationships, interpreting the unit rate as the slope.",
+      "prerequisites": {
+        "CONCEPTUAL": "7.RP.A.2"
+      }
+    },
+    "7.RP.A.2": {
+      "id": "7.RP.A.2",
+      "grade": 7,
+      "description": "Recognize and represent proportional relationships between quantities.",
+      "prerequisites": {
+        "CONCEPTUAL": "6.RP.A.3"
+      }
+    },
+    "7.RP.A.3": {
+      "id": "7.RP.A.3",
+      "grade": 7,
+      "description": "Use proportional relationships to solve multistep ratio and percent problems.",
+      "prerequisites": {
+        "SKILL": "7.RP.A.2"
+      }
+    },
+    "6.RP.A.3": {
+      "id": "6.RP.A.3",
+      "grade": 6,
+      "description": "Use ratio and rate reasoning to solve real-world and mathematical problems.",
+      "prerequisites": {}
+    },
+    "8.G.B.7": {
+      "id": "8.G.B.7",
+      "grade": 8,
+      "description": "Apply the Pythagorean Theorem to determine unknown side lengths.",
+      "prerequisites": {
+        "CONCEPTUAL": "8.EE.A.2"
+      }
+    },
+    "7.G.B.6": {
+      "id": "7.G.B.6",
+      "grade": 7,
+      "description": "Solve real-world problems involving area, volume and surface area.",
+      "prerequisites": {
+        "SKILL": "6.G.A.1"
+      }
+    },
+    "6.G.A.1": {
+      "id": "6.G.A.1",
+      "grade": 6,
+      "description": "Find the area of right triangles, other triangles, and polygons.",
+      "prerequisites": {}
+    },
+    "8.SP.A.1": {
+      "id": "8.SP.A.1",
+      "grade": 8,
+      "description": "Construct and interpret scatter plots for bivariate measurement data.",
+      "prerequisites": {
+        "CONCEPTUAL": "8.F.B.4"
+      }
+    },
+    "7.SP.A.1": {
+      "id": "7.SP.A.1",
+      "grade": 7,
+      "description": "Understand that statistics can be used to gain information about a population by examining a sample.",
+      "prerequisites": {
+        "CONCEPTUAL": "6.SP.B.5"
+      }
+    },
+    "6.SP.B.5": {
+      "id": "6.SP.B.5",
+      "grade": 6,
+      "description": "Summarize numerical data sets in relation to their context (Mean, Median, MAD).",
+      "prerequisites": {
+        "SKILL": "6.NS.A.1"
+      }
+    }
   }
 }

@@ -1,99 +1,122 @@
 import streamlit as st
 import json
-import os
 import ai_engine
 
-# Page Config
-st.set_page_config(page_title="Khan Pathfinder", page_icon="🧭")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Khan MS Math Navigator", page_icon="🗺️", layout="wide")
 
-# 1. Load Curriculum
-with open('curriculum.json', 'r') as f:
-    curriculum = json.load(f)
+# --- LOAD CURRICULUM ---
+@st.cache_data
+def load_curriculum():
+    with open('curriculum.json', 'r') as f:
+        return json.load(f)
 
-# 2. Setup Session State
-if 'current_standard' not in st.session_state:
-    st.session_state.current_standard = "7.EE.B.4a"
-if 'mode' not in st.session_state:
-    st.session_state.mode = "ASSESSMENT" 
-if 'current_question' not in st.session_state:
-    st.session_state.current_question = None
+data = load_curriculum()
+curriculum = data['nodes']
+strands = data['strands']
 
-# 3. Sidebar UI (The Map)
-st.sidebar.title("🗺️ Knowledge Map")
-st.sidebar.markdown(f"**Current Level:** `{st.session_state.current_standard}`")
-if st.session_state.mode == "REMEDIATION":
-    st.sidebar.error("⚠️ Gap Detected! Diverting to prerequisites.")
-    if st.sidebar.button("Reset to Grade Level"):
-        st.session_state.current_standard = "7.EE.B.4a"
-        st.session_state.mode = "ASSESSMENT"
-        st.session_state.current_question = None
-        st.rerun()
-else:
-    st.sidebar.success("✅ On Track")
+# --- SESSION STATE ---
+if 'current_std' not in st.session_state: st.session_state.current_std = "8.F.B.4" 
+if 'student_q' not in st.session_state: st.session_state.student_q = None
 
-# 4. Main App Logic
-st.title("Khan Academy Candidate: Diagnostic Prototype")
-st.caption("A Generative Assessment Engine that detects 'Skill Gaps' vs 'Logic Gaps'")
+# --- SIDEBAR: THE CURRICULUM BROWSER ---
+st.sidebar.header("📚 MS Math Curriculum")
 
-std_data = curriculum[st.session_state.current_standard]
-st.subheader(f"🎯 Objective: {std_data['description']}")
+# 1. Strand Selector (The Vertical Filter)
+selected_strand_key = st.sidebar.selectbox(
+    "Select Learning Domain:", 
+    list(strands.keys()),
+    format_func=lambda x: strands[x]['name']
+)
+selected_strand = strands[selected_strand_key]
 
-# Check for API Key
-if not st.secrets.get("GEMINI_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
-    st.warning("⚠️ No Gemini API Key found. Please add it to .streamlit/secrets.toml")
-    st.stop()
+st.sidebar.info(f"**Focus:** {selected_strand['description']}")
+st.sidebar.markdown("---")
 
-# Generate Question
-if not st.session_state.current_question:
-    with st.spinner("AI is crafting a unique problem..."):
-        q_data = ai_engine.generate_question(
-            st.session_state.current_standard, 
-            std_data['description'],
-            error_context="Previous failure" if st.session_state.mode == "REMEDIATION" else None
-        )
-        st.session_state.current_question = q_data
+# 2. The Standard Ladder (Sorted by Grade 8 -> 6)
+strand_nodes = [curriculum[sid] for sid in selected_strand['standards'] if sid in curriculum]
+strand_nodes.sort(key=lambda x: x['grade'], reverse=True)
 
-# Display Question
-q = st.session_state.current_question
-st.write(q.get('question_text', "Error loading question."))
-
-# User Input
-options = q.get('options', [])
-user_answer = st.radio("Choose your answer:", options, key="ans")
-
-if st.button("Submit Answer"):
-    if user_answer == q['correct_answer']:
-        st.balloons()
-        st.success("Correct! Great work.")
-        if st.button("Next Problem"):
-            st.session_state.current_question = None
-            st.rerun()
+st.sidebar.subheader("📍 Progression Path")
+for node in strand_nodes:
+    label = f"{node['id']} (Gr {node['grade']})"
+    if node['id'] == st.session_state.current_std:
+        st.sidebar.markdown(f"👉 **{label}**")
     else:
-        st.error(f"Incorrect. The answer was {q['correct_answer']}.")
-        
-        # DIAGNOSIS ENGINE
-        with st.spinner("Analyzing your learning gap..."):
-            diagnosis = ai_engine.diagnose_gap(
-                q['question_text'], 
-                user_answer, 
-                st.session_state.current_standard
-            )
-            
-            error_type = diagnosis.get('error_type', 'CONCEPTUAL')
-            st.info(f"AI Diagnosis: {diagnosis.get('explanation', '')}")
-            
-            # Auto-Route to Prerequisite
-            prereqs = std_data.get('prerequisites', {})
-            if error_type in prereqs:
-                new_standard = prereqs[error_type]
-                st.warning(f"📉 Routing to foundation skill: {new_standard}")
-                
-                # Update State
-                st.session_state.current_standard = new_standard
-                st.session_state.mode = "REMEDIATION"
-                st.session_state.current_question = None 
-                st.rerun()
+        if st.sidebar.button(label, key=f"nav_{node['id']}"):
+            st.session_state.current_std = node['id']
+            st.session_state.student_q = None 
+            st.rerun()
 
-# Teacher Debug View
-with st.expander("👨‍🏫 Teacher / Developer View (Debug)"):
-    st.json(q)
+# --- MAIN APP LOGIC ---
+curr_node = curriculum[st.session_state.current_std]
+
+st.caption(f"Domain: {selected_strand['name']} > Grade {curr_node['grade']}")
+st.title(f"{curr_node['id']}: {curr_node['description']}")
+
+# TABS
+tab_practice, tab_map = st.tabs(["🎓 Adaptive Practice", "🔗 Vertical Alignment Map"])
+
+# --- TAB 1: PRACTICE ---
+with tab_practice:
+    if not st.session_state.student_q:
+        with st.spinner(f"AI is crafting a {curr_node['id']} problem..."):
+            st.session_state.student_q = ai_engine.generate_question(
+                curr_node['id'], curr_node['description']
+            )
+
+    q = st.session_state.student_q
+    if q and "question_text" in q:
+        st.markdown(f"### {q['question_text']}")
+        opts = q.get('options', ["Error"])
+        ans = st.radio("Your Answer:", opts, key="main_q")
+        
+        if st.button("Submit Answer"):
+            if ans == q['correct_answer']:
+                st.success("✅ Correct! Mastery Verified.")
+                if st.button("Next Problem"):
+                    st.session_state.student_q = None
+                    st.rerun()
+            else:
+                st.error("❌ Incorrect. Running Diagnosis...")
+                with st.spinner("Analyzing Gap..."):
+                    diag = ai_engine.diagnose_gap(q['question_text'], ans, curr_node['id'])
+                    st.info(f"**AI Insight:** {diag['explanation']}")
+                    
+                    err_type = diag.get('error_type', 'CONCEPTUAL')
+                    prereqs = curr_node.get('prerequisites', {})
+                    if err_type in prereqs:
+                        gap_id = prereqs[err_type]
+                        if gap_id in curriculum:
+                            gap_node = curriculum[gap_id]
+                            st.warning(f"📉 Gap detected in **{gap_node['id']}** (Grade {gap_node['grade']}). Routing you there now...")
+                            if st.button(f"Fix {gap_node['id']} Gap"):
+                                st.session_state.current_std = gap_id
+                                st.session_state.student_q = None
+                                st.rerun()
+
+# --- TAB 2: THE MAP ---
+with tab_map:
+    st.markdown("### 🗺️ Where does this fit?")
+    col1, col2, col3 = st.columns(3)
+    
+    with col2:
+        st.markdown(f"**CURRENT:**\n\n`{curr_node['id']}`")
+        st.caption(curr_node['description'])
+    with col1:
+        st.markdown("**FOUNDATIONS (Prerequisites):**")
+        for r_type, pid in curr_node.get('prerequisites', {}).items():
+            if pid in curriculum:
+                p = curriculum[pid]
+                if st.button(f"⬅️ Go to {pid} (Gr {p['grade']})", key=f"pre_{pid}"):
+                     st.session_state.current_std = pid
+                     st.session_state.student_q = None
+                     st.rerun()
+    with col3:
+        st.markdown("**UNLOCKS (Post-requisites):**")
+        unlocks = [n for nid, n in curriculum.items() if curr_node['id'] in n.get('prerequisites', {}).values()]
+        for node in unlocks:
+            if st.button(f"➡️ Go to {node['id']} (Gr {node['grade']})", key=f"post_{node['id']}"):
+                 st.session_state.current_std = node['id']
+                 st.session_state.student_q = None
+                 st.rerun()
