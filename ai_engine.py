@@ -37,7 +37,16 @@ def generate_question(standard_id, description, error_context=None):
                 response_mime_type="application/json"
             )
         )
-        return json.loads(response.text)
+        result = json.loads(response.text)
+        # Handle case where API returns a list instead of dict
+        if isinstance(result, list) and len(result) > 0:
+            result = result[0]
+        return result if isinstance(result, dict) else {
+            "question_text": "Error: Unexpected API response format.",
+            "options": ["Error"],
+            "correct_answer": "Error",
+            "analysis": {"Error": f"Got {type(result)} instead of dict"}
+        }
     except Exception as e:
         return {
             "question_text": "Error generating question. Please check API Key.",
@@ -72,6 +81,10 @@ def diagnose_gap(question_text, wrong_answer, standard_id):
                 response_mime_type="application/json"
             )
         )
-        return json.loads(response.text)
+        result = json.loads(response.text)
+        # Handle case where API returns a list instead of dict
+        if isinstance(result, list) and len(result) > 0:
+            result = result[0]
+        return result if isinstance(result, dict) else {"error_type": "CONCEPTUAL", "explanation": "Unexpected response format."}
     except Exception as e:
         return {"error_type": "CONCEPTUAL", "explanation": "API Error, defaulting to Conceptual."}
