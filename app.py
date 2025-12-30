@@ -5,6 +5,64 @@ import ai_engine
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Khan MS Math Navigator", page_icon="🗺️", layout="wide")
 
+# --- CUSTOM CSS FOR BETTER TEXT SIZING ---
+st.markdown("""
+<style>
+    /* Reduce main title size */
+    h1 {
+        font-size: 1.5rem !important;
+        font-weight: 600 !important;
+        line-height: 1.3 !important;
+    }
+    
+    /* Reduce subheader sizes */
+    h2 {
+        font-size: 1.25rem !important;
+    }
+    
+    h3 {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Sidebar info box - smaller text */
+    .stSidebar [data-testid="stAlert"] {
+        font-size: 0.85rem !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+    
+    .stSidebar [data-testid="stAlert"] p {
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+    }
+    
+    /* Sidebar header */
+    .stSidebar h2 {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Sidebar subheader */
+    .stSidebar h3 {
+        font-size: 0.95rem !important;
+    }
+    
+    /* Caption text - slightly larger for readability */
+    .stCaption {
+        font-size: 0.8rem !important;
+    }
+    
+    /* General markdown text in main area */
+    .stMarkdown p {
+        font-size: 0.95rem !important;
+        line-height: 1.6 !important;
+    }
+    
+    /* Tab labels */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 0.9rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- LOAD CURRICULUM ---
 @st.cache_data
 def load_curriculum():
@@ -41,7 +99,13 @@ st.sidebar.subheader("📍 Progression Path")
 for node in strand_nodes:
     label = f"{node['id']} (Gr {node['grade']})"
     if node['id'] == st.session_state.current_std:
-        st.sidebar.markdown(f"👉 **{label}**")
+        # Feature #2: Enhanced Standard Highlighting with green background
+        st.sidebar.markdown(
+            f"""<div style="background-color:#d4edda; padding:10px; border-radius:5px; border-left: 5px solid #28a745; margin-bottom: 8px;">
+                <strong>👉 {label}</strong><br><small>{node['description'][:50]}...</small>
+            </div>""", 
+            unsafe_allow_html=True
+        )
     else:
         if st.sidebar.button(label, key=f"nav_{node['id']}"):
             st.session_state.current_std = node['id']
@@ -67,18 +131,31 @@ with tab_practice:
 
     q = st.session_state.student_q
     if q and "question_text" in q:
-        st.markdown(f"### {q['question_text']}")
+        st.markdown(f"**Problem:** {q['question_text']}")
         opts = q.get('options', ["Error"])
         ans = st.radio("Your Answer:", opts, key="main_q")
         
-        if st.button("Submit Answer"):
+        # Feature #5: Interactive Hint System
+        col_hint, col_submit = st.columns([1, 1])
+        with col_hint:
+            if st.button("💡 Need a Hint?", use_container_width=True):
+                with st.spinner("Generating hint..."):
+                    # Calls the engine instead of the raw client (proper separation of concerns)
+                    hint_text = ai_engine.generate_hint(q['question_text'])
+                    st.info(f"**💡 Hint:** {hint_text}")
+        
+        with col_submit:
+            submit_clicked = st.button("Submit Answer", use_container_width=True, type="primary")
+        
+        if submit_clicked:
             if ans == q['correct_answer']:
                 st.success("✅ Correct! Mastery Verified.")
                 if st.button("Next Problem"):
                     st.session_state.student_q = None
                     st.rerun()
             else:
-                st.error("❌ Incorrect. Running Diagnosis...")
+                # Feature #8: Clearer Fix Gap Navigation
+                st.error("❌ Incorrect. The AI detected a gap in your foundation.")
                 with st.spinner("Analyzing Gap..."):
                     diag = ai_engine.diagnose_gap(q['question_text'], ans, curr_node['id'])
                     st.info(f"**AI Insight:** {diag['explanation']}")
@@ -89,8 +166,10 @@ with tab_practice:
                         gap_id = prereqs[err_type]
                         if gap_id in curriculum:
                             gap_node = curriculum[gap_id]
-                            st.warning(f"📉 Gap detected in **{gap_node['id']}** (Grade {gap_node['grade']}). Routing you there now...")
-                            if st.button(f"Fix {gap_node['id']} Gap"):
+                            st.markdown(f"### 🚨 Critical Gap Found: {gap_node['id']}")
+                            st.markdown(f"*{gap_node['description']}*")
+                            # Big, prominent button to fix the gap
+                            if st.button(f"🚑 Fix {gap_node['id']} Now", type="primary", use_container_width=True):
                                 st.session_state.current_std = gap_id
                                 st.session_state.student_q = None
                                 st.rerun()

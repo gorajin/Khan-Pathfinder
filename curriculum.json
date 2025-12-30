@@ -194,6 +194,18 @@
       "prerequisites": {
         "SKILL": "6.NS.A.1"
       }
+    },
+    "8.EE.A.2": {
+      "id": "8.EE.A.2",
+      "grade": 8,
+      "description": "Use square root and cube root symbols to represent solutions to equations.",
+      "prerequisites": {}
+    },
+    "7.NS.A.2": {
+      "id": "7.NS.A.2",
+      "grade": 7,
+      "description": "Apply and extend previous understandings of multiplication and division and of fractions.",
+      "prerequisites": {}
     }
   }
 }

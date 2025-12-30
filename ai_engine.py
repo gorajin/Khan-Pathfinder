@@ -16,6 +16,9 @@ def generate_question(standard_id, description, error_context=None):
     - Theme: Space Exploration, Video Games, or Sports.
     - {f"PREVIOUS ERROR: Student failed due to {error_context}. Make this question simpler (scaffolding)." if error_context else "Difficulty: Medium."}
     
+    FORMATTING RULES:
+    - Use LaTeX for all math expressions (enclose in single dollar signs, e.g., $x^2 + 5$).
+    
     OUTPUT JSON FORMAT ONLY:
     {{
         "question_text": "The word problem text...",
@@ -88,3 +91,25 @@ def diagnose_gap(question_text, wrong_answer, standard_id):
         return result if isinstance(result, dict) else {"error_type": "CONCEPTUAL", "explanation": "Unexpected response format."}
     except Exception as e:
         return {"error_type": "CONCEPTUAL", "explanation": "API Error, defaulting to Conceptual."}
+
+def generate_hint(question_text):
+    """Generate a pedagogical hint without revealing the answer."""
+    prompt = f"""
+    You are a helpful tutor. The student is stuck on this problem:
+    "{question_text}"
+    
+    Provide a concise HINT. 
+    - Do NOT solve it.
+    - Do NOT give the answer.
+    - Just give the first conceptual step.
+    - Use LaTeX for math (e.g., $x^2$).
+    """
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        return response.text
+    except Exception:
+        return "Review the properties of operations and try again."
+
