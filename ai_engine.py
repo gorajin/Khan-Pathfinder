@@ -1,0 +1,77 @@
+import os
+import json
+import streamlit as st
+from google import genai
+from google.genai import types
+
+# Try to get key from Streamlit secrets first, then Environment
+api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
+
+def generate_question(standard_id, description, error_context=None):
+    prompt = f"""
+    Create a 7th-grade math word problem for Standard: {standard_id} - {description}.
+    
+    CONTEXT:
+    - Theme: Space Exploration, Video Games, or Sports.
+    - {f"PREVIOUS ERROR: Student failed due to {error_context}. Make this question simpler (scaffolding)." if error_context else "Difficulty: Medium."}
+    
+    OUTPUT JSON FORMAT ONLY:
+    {{
+        "question_text": "The word problem text...",
+        "correct_answer": "The correct option text",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "analysis": {{
+            "Option A": "Why this is wrong (specific misconception)...",
+            "Option B": "Why this is wrong...",
+            "Option C": "Why this is wrong..."
+        }}
+    }}
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return {
+            "question_text": "Error generating question. Please check API Key.",
+            "options": ["Error"],
+            "correct_answer": "Error",
+            "analysis": {"Error": str(e)}
+        }
+
+def diagnose_gap(question_text, wrong_answer, standard_id):
+    prompt = f"""
+    Task: Diagnose the student's error.
+    Standard: {standard_id}
+    Question: {question_text}
+    Student Answer: {wrong_answer}
+    
+    Decide if this is:
+    1. 'ARITHMETIC' (Calculation error, integer mistake)
+    2. 'CONCEPTUAL' (Logic error, wrong formula, misunderstanding the standard)
+    
+    OUTPUT JSON ONLY:
+    {{
+        "error_type": "ARITHMETIC" or "CONCEPTUAL",
+        "explanation": "Brief explanation for the teacher."
+    }}
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return {"error_type": "CONCEPTUAL", "explanation": "API Error, defaulting to Conceptual."}

@@ -1,0 +1,23 @@
+{
+  "7.EE.B.4a": {
+    "id": "7.EE.B.4a",
+    "grade": 7,
+    "description": "Solve word problems leading to equations of the form px + q = r",
+    "prerequisites": {
+      "CONCEPTUAL": "6.EE.B.7",
+      "ARITHMETIC": "7.NS.A.1"
+    }
+  },
+  "6.EE.B.7": {
+    "id": "6.EE.B.7",
+    "grade": 6,
+    "description": "Solve real-world problems by writing equations of the form x + p = q",
+    "prerequisites": {} 
+  },
+  "7.NS.A.1": {
+    "id": "7.NS.A.1",
+    "grade": 7,
+    "description": "Apply properties of operations to add and subtract rational numbers",
+    "prerequisites": {}
+  }
+}
