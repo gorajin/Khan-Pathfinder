@@ -4,9 +4,24 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# Try to get key from Streamlit secrets first, then Environment
-api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
+# Lazy client initialization to work with Streamlit Cloud secrets
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        # Try Streamlit secrets first (for Streamlit Cloud), then environment variable (for local)
+        try:
+            api_key = st.secrets["GEMINI_API_KEY"]
+        except (KeyError, FileNotFoundError):
+            api_key = os.environ.get("GEMINI_API_KEY")
+        
+        if not api_key:
+            st.error("⚠️ GEMINI_API_KEY not found! Add it to .streamlit/secrets.toml or set as environment variable.")
+            st.stop()
+        
+        _client = genai.Client(api_key=api_key)
+    return _client
 
 def generate_question(standard_id, description, error_context=None):
     prompt = f"""
@@ -33,7 +48,7 @@ def generate_question(standard_id, description, error_context=None):
     """
     
     try:
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -81,7 +96,7 @@ def diagnose_gap(question_text, wrong_answer, standard_id):
     """
     
     try:
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -109,7 +124,7 @@ def generate_hint(question_text):
     - Use LaTeX for math (e.g., $x^2$).
     """
     try:
-        response = client.models.generate_content(
+        response = get_client().models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt
         )
