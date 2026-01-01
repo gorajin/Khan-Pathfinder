@@ -76,8 +76,13 @@ strands = data['strands']
 # --- SESSION STATE ---
 if 'current_std' not in st.session_state: st.session_state.current_std = "8.F.B.4" 
 if 'student_q' not in st.session_state: st.session_state.student_q = None
+if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 # --- SIDEBAR: THE CURRICULUM BROWSER ---
+if st.sidebar.button("🏠 Home"):
+    st.session_state.page = "HOME"
+    st.rerun()
+
 st.sidebar.header("📚 MS Math Curriculum")
 
 # 1. Strand Selector (The Vertical Filter)
@@ -98,7 +103,8 @@ strand_nodes.sort(key=lambda x: x['grade'], reverse=True)
 st.sidebar.subheader("📍 Progression Path")
 for node in strand_nodes:
     label = f"{node['id']} (Gr {node['grade']})"
-    if node['id'] == st.session_state.current_std:
+    # Only highlight current standard if NOT on Home screen
+    if node['id'] == st.session_state.current_std and st.session_state.page != "HOME":
         # Feature #2: Enhanced Standard Highlighting with green background
         st.sidebar.markdown(
             f"""<div style="background-color:#d4edda; padding:10px; border-radius:5px; border-left: 5px solid #28a745; margin-bottom: 8px;">
@@ -109,8 +115,25 @@ for node in strand_nodes:
     else:
         if st.sidebar.button(label, key=f"nav_{node['id']}"):
             st.session_state.current_std = node['id']
-            st.session_state.student_q = None 
+            st.session_state.student_q = None
+            st.session_state.page = "PRACTICE"  # Exit home when selecting a standard
             st.rerun()
+
+# --- WELCOME SCREEN ---
+if st.session_state.page == "HOME":
+    st.title("Welcome to Khan Pathfinder 🧭")
+    st.markdown("""
+    ### A Next-Gen Diagnostic Engine
+    This prototype demonstrates **Adaptive Remediation** for Middle School Math.
+    
+    **Core Features:**
+    *   **Vertical Alignment:** Connects 8th Grade failures to 6th Grade gaps.
+    *   **AI Diagnostics:** Analyzes *why* a student missed a question.
+    *   **Scaffolding:** Generates hints and remediation in real-time.
+    
+    **👈 Select a Strand in the sidebar to begin.**
+    """)
+    st.stop()  # Stop the rest of the app from loading until they click a strand
 
 # --- MAIN APP LOGIC ---
 curr_node = curriculum[st.session_state.current_std]
@@ -131,7 +154,8 @@ with tab_practice:
 
     q = st.session_state.student_q
     if q and "question_text" in q:
-        st.markdown(f"**Problem:** {q['question_text']}")
+        # Use st.markdown with LaTeX support for proper math rendering
+        st.markdown(f"### {q['question_text']}", unsafe_allow_html=True)
         opts = q.get('options', ["Error"])
         ans = st.radio("Your Answer:", opts, key="main_q")
         
@@ -147,32 +171,66 @@ with tab_practice:
         with col_submit:
             submit_clicked = st.button("Submit Answer", use_container_width=True, type="primary")
         
+        # Store submission state in session
         if submit_clicked:
-            if ans == q['correct_answer']:
+            st.session_state.submitted_answer = ans
+            st.session_state.is_correct = (ans == q['correct_answer'])
+            if not st.session_state.is_correct:
+                # Generate diagnosis immediately
+                diag = ai_engine.diagnose_gap(q['question_text'], ans, curr_node['id'])
+                st.session_state.last_diagnosis = diag
+            st.rerun()
+        
+        # Show feedback based on stored state
+        if 'submitted_answer' in st.session_state and st.session_state.submitted_answer:
+            if st.session_state.is_correct:
                 st.success("✅ Correct! Mastery Verified.")
                 if st.button("Next Problem"):
                     st.session_state.student_q = None
+                    st.session_state.submitted_answer = None
+                    st.session_state.is_correct = None
                     st.rerun()
             else:
-                # Feature #8: Clearer Fix Gap Navigation
+                # Incorrect answer - show diagnosis and recovery options
                 st.error("❌ Incorrect. The AI detected a gap in your foundation.")
-                with st.spinner("Analyzing Gap..."):
-                    diag = ai_engine.diagnose_gap(q['question_text'], ans, curr_node['id'])
-                    st.info(f"**AI Insight:** {diag['explanation']}")
-                    
-                    err_type = diag.get('error_type', 'CONCEPTUAL')
-                    prereqs = curr_node.get('prerequisites', {})
+                
+                diag = st.session_state.get('last_diagnosis', {'error_type': 'CONCEPTUAL', 'explanation': 'Unable to diagnose.'})
+                st.info(f"**AI Insight:** {diag['explanation']}")
+                
+                err_type = diag.get('error_type', 'CONCEPTUAL')
+                prereqs = curr_node.get('prerequisites', {})
+                
+                # Recovery Path: Try Again or Fix Gap
+                col_retry, col_fix = st.columns(2)
+                with col_retry:
+                    if st.button("🔄 Try Problem Again", use_container_width=True):
+                        # Clear all state
+                        st.session_state.student_q = None
+                        st.session_state.submitted_answer = None
+                        st.session_state.is_correct = None
+                        st.session_state.last_diagnosis = None
+                        st.rerun()
+                
+                with col_fix:
+                    # Find the gap to fix: exact match first, then fallback to first prerequisite
+                    gap_id = None
                     if err_type in prereqs:
                         gap_id = prereqs[err_type]
-                        if gap_id in curriculum:
-                            gap_node = curriculum[gap_id]
-                            st.markdown(f"### 🚨 Critical Gap Found: {gap_node['id']}")
-                            st.markdown(f"*{gap_node['description']}*")
-                            # Big, prominent button to fix the gap
-                            if st.button(f"🚑 Fix {gap_node['id']} Now", type="primary", use_container_width=True):
-                                st.session_state.current_std = gap_id
-                                st.session_state.student_q = None
-                                st.rerun()
+                    elif prereqs:
+                        # Fallback: use the first prerequisite when exact type doesn't match
+                        gap_id = list(prereqs.values())[0]
+                    
+                    if gap_id and gap_id in curriculum:
+                        gap_node = curriculum[gap_id]
+                        st.markdown(f"**🚨 Gap Found:** {gap_node['id']}")
+                        st.caption(f"{gap_node['description']}")
+                        if st.button(f"🚑 Fix {gap_node['id']} Now", type="primary", use_container_width=True):
+                            st.session_state.current_std = gap_id
+                            st.session_state.student_q = None
+                            st.session_state.submitted_answer = None
+                            st.session_state.is_correct = None
+                            st.session_state.last_diagnosis = None
+                            st.rerun()
 
 # --- TAB 2: THE MAP ---
 with tab_map:
@@ -184,18 +242,29 @@ with tab_map:
         st.caption(curr_node['description'])
     with col1:
         st.markdown("**FOUNDATIONS (Prerequisites):**")
-        for r_type, pid in curr_node.get('prerequisites', {}).items():
-            if pid in curriculum:
-                p = curriculum[pid]
-                if st.button(f"⬅️ Go to {pid} (Gr {p['grade']})", key=f"pre_{pid}"):
-                     st.session_state.current_std = pid
-                     st.session_state.student_q = None
-                     st.rerun()
+        prereqs = curr_node.get('prerequisites', {})
+        if prereqs:
+            for r_type, pid in prereqs.items():
+                if pid in curriculum:
+                    p = curriculum[pid]
+                    st.markdown(f"**{r_type}** → `{pid}`")
+                    st.caption(f"_{p['description']}_")
+                    if st.button(f"⬅️ Go to {pid} (Gr {p['grade']})", key=f"pre_{pid}"):
+                         st.session_state.current_std = pid
+                         st.session_state.student_q = None
+                         st.rerun()
+        else:
+            st.info("🌱 This is a foundation standard - no prerequisites!")
     with col3:
         st.markdown("**UNLOCKS (Post-requisites):**")
         unlocks = [n for nid, n in curriculum.items() if curr_node['id'] in n.get('prerequisites', {}).values()]
-        for node in unlocks:
-            if st.button(f"➡️ Go to {node['id']} (Gr {node['grade']})", key=f"post_{node['id']}"):
-                 st.session_state.current_std = node['id']
-                 st.session_state.student_q = None
-                 st.rerun()
+        if unlocks:
+            for node in unlocks:
+                st.markdown(f"`{node['id']}`")
+                st.caption(f"_{node['description']}_")
+                if st.button(f"➡️ Go to {node['id']} (Gr {node['grade']})", key=f"post_{node['id']}"):
+                     st.session_state.current_std = node['id']
+                     st.session_state.student_q = None
+                     st.rerun()
+        else:
+            st.info("🎯 This is a capstone standard - end of this path!")

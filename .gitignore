@@ -1,6 +1,25 @@
+# Environment & Secrets (NEVER commit these!)
 .env
 .streamlit/secrets.toml
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual Environments
 .venv/
 venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

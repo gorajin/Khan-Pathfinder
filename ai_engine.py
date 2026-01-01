@@ -65,13 +65,17 @@ def diagnose_gap(question_text, wrong_answer, standard_id):
     Question: {question_text}
     Student Answer: {wrong_answer}
     
-    Decide if this is:
-    1. 'ARITHMETIC' (Calculation error, integer mistake)
-    2. 'CONCEPTUAL' (Logic error, wrong formula, misunderstanding the standard)
+    Decide which category best describes the error:
+    1. 'ARITHMETIC' - Calculation error, integer/decimal mistake, sign error
+    2. 'CONCEPTUAL' - Misunderstanding the core concept, wrong formula, logic error
+    3. 'ALGEBRAIC' - Equation manipulation error, variable isolation mistake, slope/intercept confusion
+    4. 'SKILL' - Procedural error, missing a step, applying wrong procedure
+    5. 'GRAPHICAL' - Misreading or plotting graphs incorrectly, coordinate errors
+    6. 'GEOMETRIC' - Shape/angle misconception, area/perimeter confusion, spatial reasoning error
     
     OUTPUT JSON ONLY:
     {{
-        "error_type": "ARITHMETIC" or "CONCEPTUAL",
+        "error_type": "ARITHMETIC" or "CONCEPTUAL" or "ALGEBRAIC" or "SKILL" or "GRAPHICAL" or "GEOMETRIC",
         "explanation": "Brief explanation for the teacher."
     }}
     """
