@@ -77,6 +77,21 @@ strands = data['strands']
 if 'current_std' not in st.session_state: st.session_state.current_std = "8.F.B.4" 
 if 'student_q' not in st.session_state: st.session_state.student_q = None
 if 'page' not in st.session_state: st.session_state.page = "HOME"
+if 'mastered_ids' not in st.session_state: st.session_state.mastered_ids = set()
+
+# THE FIX: Use a dictionary to track streaks for EACH standard separately
+if 'streaks' not in st.session_state: st.session_state.streaks = {} 
+
+# Helper to get current streak safely
+def get_streak(std_id):
+    return st.session_state.streaks.get(std_id, 0)
+
+def update_streak(std_id, is_correct):
+    current = st.session_state.streaks.get(std_id, 0)
+    if is_correct:
+        st.session_state.streaks[std_id] = current + 1
+    else:
+        st.session_state.streaks[std_id] = 0
 
 # --- SIDEBAR: THE CURRICULUM BROWSER ---
 if st.sidebar.button("🏠 Home"):
@@ -102,7 +117,17 @@ strand_nodes.sort(key=lambda x: x['grade'], reverse=True)
 
 st.sidebar.subheader("📍 Progression Path")
 for node in strand_nodes:
-    label = f"{node['id']} (Gr {node['grade']})"
+    # Check mastery and streak
+    is_mastered = node['id'] in st.session_state.mastered_ids
+    local_streak = get_streak(node['id'])
+    
+    # Icon Logic
+    icon = "⚪"
+    if is_mastered: icon = "✅"
+    elif local_streak > 0: icon = f"🔥{local_streak}"
+    
+    label = f"{icon} {node['id']} (Gr {node['grade']})"
+    
     # Only highlight current standard if NOT on Home screen
     if node['id'] == st.session_state.current_std and st.session_state.page != "HOME":
         # Feature #2: Enhanced Standard Highlighting with green background
@@ -171,28 +196,73 @@ with tab_practice:
         with col_submit:
             submit_clicked = st.button("Submit Answer", use_container_width=True, type="primary")
         
-        # Store submission state in session
+        # Handle submission with mastery tracking
         if submit_clicked:
-            st.session_state.submitted_answer = ans
-            st.session_state.is_correct = (ans == q['correct_answer'])
-            if not st.session_state.is_correct:
+            if ans == q['correct_answer']:
+                # 1. Update Streak
+                update_streak(curr_node['id'], True)
+                current_streak = get_streak(curr_node['id'])
+                st.session_state.submitted_answer = ans
+                st.session_state.is_correct = True
+                st.session_state.current_streak_display = current_streak
+                
+                # 2. Check for Mastery (5 in a row)
+                if current_streak >= 5:
+                    st.session_state.mastery_achieved = True
+                    st.session_state.mastered_ids.add(curr_node['id'])
+                else:
+                    st.session_state.mastery_achieved = False
+                st.rerun()
+            else:
+                # Reset streak on wrong answer
+                update_streak(curr_node['id'], False)
+                st.session_state.submitted_answer = ans
+                st.session_state.is_correct = False
                 # Generate diagnosis immediately
                 diag = ai_engine.diagnose_gap(q['question_text'], ans, curr_node['id'])
                 st.session_state.last_diagnosis = diag
-            st.rerun()
+                st.rerun()
         
         # Show feedback based on stored state
         if 'submitted_answer' in st.session_state and st.session_state.submitted_answer:
             if st.session_state.is_correct:
-                st.success("✅ Correct! Mastery Verified.")
-                if st.button("Next Problem"):
-                    st.session_state.student_q = None
-                    st.session_state.submitted_answer = None
-                    st.session_state.is_correct = None
-                    st.rerun()
+                current_streak = st.session_state.get('current_streak_display', get_streak(curr_node['id']))
+                
+                if st.session_state.get('mastery_achieved', False):
+                    # MASTERY ACHIEVED!
+                    st.balloons()
+                    st.success(f"🎓 **MASTERY UNLOCKED!** You crushed {curr_node['id']}!")
+                    
+                    # 3. Find Unlocks (Post-requisites)
+                    unlocks = [n for nid, n in curriculum.items() if curr_node['id'] in n.get('prerequisites', {}).values()]
+                    
+                    if unlocks:
+                        st.markdown("### 🔓 You unlocked new skills:")
+                        cols = st.columns(len(unlocks))
+                        for idx, next_node in enumerate(unlocks):
+                            with cols[idx]:
+                                st.info(f"**{next_node['id']}**\n\n{next_node['description']}")
+                                if st.button(f"🚀 Start {next_node['id']}", key=f"adv_{next_node['id']}"):
+                                    st.session_state.current_std = next_node['id']
+                                    st.session_state.student_q = None
+                                    st.session_state.submitted_answer = None
+                                    st.session_state.is_correct = None
+                                    st.session_state.mastery_achieved = None
+                                    st.rerun()
+                    else:
+                        st.success("🏆 You have reached the top of this branch! Pick a new strand in the sidebar.")
+                else:
+                    # Normal Correct Answer - building streak
+                    st.success(f"✅ Correct! Streak: {current_streak}/5 🔥")
+                    st.progress(current_streak / 5)
+                    if st.button("Next Problem"):
+                        st.session_state.student_q = None
+                        st.session_state.submitted_answer = None
+                        st.session_state.is_correct = None
+                        st.rerun()
             else:
                 # Incorrect answer - show diagnosis and recovery options
-                st.error("❌ Incorrect. The AI detected a gap in your foundation.")
+                st.error("❌ Incorrect. Streak reset to 0. The AI detected a gap in your foundation.")
                 
                 diag = st.session_state.get('last_diagnosis', {'error_type': 'CONCEPTUAL', 'explanation': 'Unable to diagnose.'})
                 st.info(f"**AI Insight:** {diag['explanation']}")
