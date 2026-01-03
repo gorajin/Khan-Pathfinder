@@ -34,11 +34,18 @@ def generate_question(standard_id, description, error_context=None):
     FORMATTING RULES:
     - Use LaTeX for all math expressions (enclose in single dollar signs, e.g., $x^2 + 5$).
     
+    VERIFICATION STEP (MANDATORY):
+    1. First, solve the problem yourself step-by-step.
+    2. Verify your arithmetic is correct before proceeding.
+    3. The correct numerical answer MUST be one of the 4 options.
+    4. Generate 3 plausible wrong answers based on common student errors.
+    
     CRITICAL: The "correct_answer" field MUST be an EXACT, CHARACTER-FOR-CHARACTER copy of one of the strings in the "options" array. No variations allowed.
     
     OUTPUT JSON FORMAT ONLY:
     {{
         "question_text": "The word problem text...",
+        "solution_steps": "Show your step-by-step solution here to verify correctness",
         "correct_answer": "MUST BE EXACT COPY of one option",
         "options": ["Option A", "Option B", "Option C", "Option D"],
         "analysis": {{
