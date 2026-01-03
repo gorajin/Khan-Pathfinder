@@ -93,6 +93,36 @@ def update_streak(std_id, is_correct):
     else:
         st.session_state.streaks[std_id] = 0
 
+# Robust answer matching function
+def answer_matches(student_answer, correct_answer):
+    """Check if student answer matches correct answer with flexible matching."""
+    # Exact match first
+    if student_answer == correct_answer:
+        return True
+    
+    # Normalize: lowercase, strip whitespace
+    s_norm = student_answer.lower().strip()
+    c_norm = correct_answer.lower().strip()
+    
+    if s_norm == c_norm:
+        return True
+    
+    # Check if correct answer is contained in student answer (e.g., "12" in "d/s; 12 hours")
+    if c_norm in s_norm or s_norm in c_norm:
+        return True
+    
+    # Extract just the numeric part if present (e.g., "111" from "5g + 3r; 111")
+    import re
+    s_nums = re.findall(r'-?\d+\.?\d*', student_answer)
+    c_nums = re.findall(r'-?\d+\.?\d*', correct_answer)
+    
+    if s_nums and c_nums:
+        # Compare the last number in each (usually the final answer)
+        if s_nums[-1] == c_nums[-1]:
+            return True
+    
+    return False
+
 # --- SIDEBAR: THE CURRICULUM BROWSER ---
 if st.sidebar.button("🏠 Home"):
     st.session_state.page = "HOME"
@@ -198,7 +228,7 @@ with tab_practice:
         
         # Handle submission with mastery tracking
         if submit_clicked:
-            if ans == q['correct_answer']:
+            if answer_matches(ans, q['correct_answer']):
                 # 1. Update Streak
                 update_streak(curr_node['id'], True)
                 current_streak = get_streak(curr_node['id'])
