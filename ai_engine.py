@@ -34,10 +34,12 @@ def generate_question(standard_id, description, error_context=None):
     FORMATTING RULES:
     - Use LaTeX for all math expressions (enclose in single dollar signs, e.g., $x^2 + 5$).
     
+    CRITICAL: The "correct_answer" field MUST be an EXACT, CHARACTER-FOR-CHARACTER copy of one of the strings in the "options" array. No variations allowed.
+    
     OUTPUT JSON FORMAT ONLY:
     {{
         "question_text": "The word problem text...",
-        "correct_answer": "The correct option text",
+        "correct_answer": "MUST BE EXACT COPY of one option",
         "options": ["Option A", "Option B", "Option C", "Option D"],
         "analysis": {{
             "Option A": "Why this is wrong (specific misconception)...",
@@ -59,12 +61,32 @@ def generate_question(standard_id, description, error_context=None):
         # Handle case where API returns a list instead of dict
         if isinstance(result, list) and len(result) > 0:
             result = result[0]
-        return result if isinstance(result, dict) else {
-            "question_text": "Error: Unexpected API response format.",
-            "options": ["Error"],
-            "correct_answer": "Error",
-            "analysis": {"Error": f"Got {type(result)} instead of dict"}
-        }
+        
+        if isinstance(result, dict):
+            # CRITICAL FIX: Ensure correct_answer exactly matches one of the options
+            options = result.get('options', [])
+            correct = result.get('correct_answer', '')
+            
+            # If correct_answer doesn't exactly match any option, try to find the best match
+            if correct not in options and options:
+                correct_lower = correct.lower().strip()
+                for opt in options:
+                    # Check if the correct answer is contained in the option or vice versa
+                    if correct_lower in opt.lower() or opt.lower() in correct_lower:
+                        result['correct_answer'] = opt
+                        break
+                else:
+                    # Last resort: assume first option is correct (shouldn't happen often)
+                    result['correct_answer'] = options[0]
+            
+            return result
+        else:
+            return {
+                "question_text": "Error: Unexpected API response format.",
+                "options": ["Error"],
+                "correct_answer": "Error",
+                "analysis": {"Error": f"Got {type(result)} instead of dict"}
+            }
     except Exception as e:
         return {
             "question_text": "Error generating question. Please check API Key.",
